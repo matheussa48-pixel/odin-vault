@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel Admin - Odin Vault</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: #e0e0e0; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: #1e1e1e; padding: 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 20px; }
+        .header h2 { margin: 0; color: #bb86fc; }
+        .logout-btn { background: #cf6679; color: #fff; padding: 8px 15px; border: none; border-radius: 4px; text-decoration: none; font-weight: bold; }
+        .logout-btn:hover { background: #b00020; }
+        
+        .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .nav-tabs button { flex: 1; padding: 10px; background: #2d2d2d; border: none; color: #fff; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .nav-tabs button.active { background: #6200ee; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        form { background: #252525; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
+        input, select, textarea { width: 100%; padding: 10px; background: #2d2d2d; border: 1px solid #444; color: #fff; border-radius: 4px; box-sizing: border-box; }
+        button[type="submit"] { background: #6200ee; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button[type="submit"]:hover { background: #3700b3; }
+
+        ul { list-style: none; padding: 0; }
+        li { background: #2d2d2d; margin-top: 10px; padding: 12px; border-radius: 4px; border-left: 4px solid #6200ee; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Odin Vault - Painel de Controlo</h2>
+            <div>
+                <span>Logado como: <strong>{{ usuario }}</strong></span>
+                <a href="/logout" class="logout-btn">Sair</a>
+            </div>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="active" onclick="mudarTab('botoes', event)">Botões / Categorias</button>
+            <button onclick="mudarTab('conteudos', event)">Conteúdos</button>
+            <button onclick="mudarTab('usuarios', event)">Utilizadores</button>
+            <button onclick="mudarTab('tickets', event)">Tickets / Chamados</button>
+        </div>
+
+        <!-- TAB BOTÕES -->
+        <div id="tab-botoes" class="tab-content active">
+            <h3>Criar Novo Botão no App (ex: OSINT, Tools)</h3>
+            <form id="formBotao">
+                <input type="text" id="nomeBotao" placeholder="Nome do Botão (ex: OSINT)" required>
+                <button type="submit">Adicionar Botão</button>
+            </form>
+            <h3>Botões Existentes</h3>
+            <ul id="listaBotoes"></ul>
+        </div>
+
+        <!-- TAB CONTEÚDOS -->
+        <div id="tab-conteudos" class="tab-content">
+            <h3>Adicionar Conteúdo / Ferramenta</h3>
+            <form id="formConteudo">
+                <select id="selectBotao" required></select>
+                <input type="text" id="tituloConteudo" placeholder="Título" required>
+                <textarea id="descConteudo" placeholder="Descrição ou instruções..." rows="3" required></textarea>
+                <input type="text" id="linkConteudo" placeholder="Link da ferramenta (opcional)">
+                <button type="submit">Adicionar Conteúdo</button>
+            </form>
+            <h3>Conteúdos Cadastrados</h3>
+            <ul id="listaConteudos"></ul>
+        </div>
+
+        <!-- TAB UTILIZADORES -->
+        <div id="tab-usuarios" class="tab-content">
+            <h3>Utilizadores Registados no Sistema</h3>
+            <ul id="listaUsuarios"></ul>
+        </div>
+
+        <!-- TAB TICKETS -->
+        <div id="tab-tickets" class="tab-content">
+            <h3>Chamados de Suporte</h3>
+            <ul id="listaTickets"></ul>
+        </div>
+    </div>
+
+    <script>
+        function mudarTab(tab, event) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-tabs button').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+            event.target.classList.add('active');
+            if(tab === 'usuarios') carregarUsuarios();
+            if(tab === 'tickets') carregarTickets();
+        }
+
+        async function carregarBotoes() {
+            const res = await fetch('/api/botoes');
+            const dados = await res.json();
+            const lista = document.getElementById('listaBotoes');
+            const select = document.getElementById('selectBotao');
+            lista.innerHTML = '';
+            select.innerHTML = '<option value="">Selecione o Botão / Categoria</option>';
+            
+            dados.forEach(b => {
+                lista.innerHTML += `<li><strong>${b.nome}</strong></li>`;
+                select.innerHTML += `<option value="${b.id}">${b.nome}</option>`;
+            });
+        }
+
+        async function carregarConteudos() {
+            const res = await fetch('/api/conteudos');
+            const dados = await res.json();
+            const lista = document.getElementById('listaConteudos');
+            lista.innerHTML = '';
+            dados.forEach(c => {
+                lista.innerHTML += `<li><strong>[${c.categoria}] ${c.titulo}</strong><p>${c.descricao}</p></li>`;
+            });
+        }
+
+        async function carregarUsuarios() {
+            const res = await fetch('/api/usuarios');
+            const dados = await res.json();
+            const lista = document.getElementById('listaUsuarios');
+            lista.innerHTML = '';
+            dados.forEach(u => {
+                lista.innerHTML += `<li><strong>${u.usuario}</strong> - Cargo: ${u.role} - Status: ${u.status}</li>`;
+            });
+        }
+
+        async function carregarTickets() {
+            const res = await fetch('/api/tickets');
+            const dados = await res.json();
+            const lista = document.getElementById('listaTickets');
+            lista.innerHTML = '';
+            dados.forEach(t => {
+                lista.innerHTML += `<li><strong>De: ${t.usuario}</strong> | Assunto: ${t.assunto}<p>${t.mensagem}</p></li>`;
+            });
+        }
+
+        document.getElementById('formBotao').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await fetch('/api/botoes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nome: document.getElementById('nomeBotao').value })
+            });
+            document.getElementById('nomeBotao').value = '';
+            carregarBotoes();
+        });
+
+        document.getElementById('formConteudo').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await fetch('/api/conteudos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    botao_id: document.getElementById('selectBotao').value,
+                    titulo: document.getElementById('tituloConteudo').value,
+                    descricao: document.getElementById('descConteudo').value,
+                    link_ferramenta: document.getElementById('linkConteudo').value
+                })
+            });
+            document.getElementById('tituloConteudo').value = '';
+            document.getElementById('descConteudo').value = '';
+            document.getElementById('linkConteudo').value = '';
+            carregarConteudos();
+        });
+
+        carregarBotoes();
+        carregarConteudos();
+    </script>
+</body>
+</html>

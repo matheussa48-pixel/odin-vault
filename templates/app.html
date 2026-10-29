@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Odin Vault - Plataforma Social & Operacional</title>
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#ccff00">
+    <style>
+        :root {
+            --primary: #ccff00;
+            --bg: #0b0c10;
+            --card-bg: #14161f;
+            --sidebar-bg: #10121a;
+            --input-bg: #1f2230;
+            --text: #ffffff;
+            --text-muted: #8c92a4;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; width: 100vw; }
+
+        /* Auth Screen */
+        .auth-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: var(--bg); display: flex; justify-content: center; align-items: center; z-index: 2000; padding: 15px; }
+        .auth-screen { width: 100%; max-width: 420px; display: flex; flex-direction: column; align-items: center; }
+        .top-status { width: 100%; display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-bottom: 25px; letter-spacing: 1px; }
+
+        .logo-container { text-align: center; margin-bottom: 30px; }
+        .shield-icon { width: 45px; height: 45px; margin: 0 auto 10px; border: 2px solid var(--primary); border-radius: 50% 50% 40% 40%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 15px rgba(204,255,0,0.2); }
+        .shield-icon::before { content: "🛡️"; font-size: 20px; }
+        .logo-title { font-size: 26px; font-weight: 900; color: var(--primary); letter-spacing: 3px; }
+        .logo-subtitle { font-size: 10px; color: var(--text-muted); letter-spacing: 2px; margin-top: 4px; text-transform: uppercase; }
+
+        .terminal-box { width: 100%; background: var(--card-bg); border: 1px solid #232738; border-radius: 12px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.7); }
+        .terminal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; font-family: monospace; font-size: 12px; color: var(--primary); background: #1a1d29; padding: 8px 12px; border-radius: 6px; }
+        
+        .input-group { margin-bottom: 15px; }
+        .input-label { display: block; font-size: 11px; font-weight: bold; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 1px; }
+        input, textarea { width: 100%; padding: 12px 15px; background: var(--input-bg); border: 1px solid #2d3246; border-radius: 8px; color: #fff; font-size: 14px; outline: none; transition: 0.2s; }
+        input:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 8px rgba(204,255,0,0.15); }
+
+        .btn-auth { width: 100%; padding: 14px; background: var(--primary); color: #0b0c10; border: none; border-radius: 8px; font-weight: 900; font-size: 14px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; margin-top: 10px; transition: 0.2s; box-shadow: 0 0 15px rgba(204,255,0,0.3); }
+        .btn-auth:hover { background: #b3e600; }
+        .auth-footer { margin-top: 25px; text-align: center; }
+        .auth-footer a { color: var(--text-muted); font-size: 12px; text-decoration: none; cursor: pointer; }
+        .auth-footer a:hover { color: var(--primary); }
+
+        /* Layout Desktop */
+        .app-layout { display: flex; width: 100vw; height: 100vh; background: var(--bg); position: relative; }
+        .sidebar { width: 280px; min-width: 280px; background: var(--sidebar-bg); border-right: 1px solid #232738; display: flex; flex-direction: column; justify-content: space-between; padding: 25px 20px; height: 100vh; overflow-y: auto; transition: transform 0.3s ease; z-index: 1000; }
+        .sidebar-top h2 { color: var(--primary); font-size: 20px; letter-spacing: 2px; margin-bottom: 5px; }
+        .sidebar-top p { font-size: 11px; color: var(--text-muted); margin-bottom: 25px; text-transform: uppercase; }
+        
+        .menu-section-title { font-size: 11px; color: var(--text-muted); letter-spacing: 1px; margin-bottom: 10px; font-weight: bold; }
+        .nav-menu { display: flex; flex-direction: column; gap: 8px; margin-bottom: 25px; }
+        .nav-item { padding: 12px 15px; background: var(--card-bg); border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 13px; color: #b0b4c3; border: 1px solid #232738; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
+        .nav-item:hover, .nav-item.active { background: #1a1d29; color: var(--primary); border-color: var(--primary); box-shadow: 0 0 10px rgba(204,255,0,0.1); }
+
+        .main-content { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; width: 100%; }
+        .main-header { padding: 15px 20px; background: var(--card-bg); border-bottom: 1px solid #232738; display: flex; justify-content: space-between; align-items: center; min-height: 65px; gap: 10px; }
+        .user-tag { color: var(--primary); font-family: monospace; font-size: 13px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+        .avatar-img { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--primary); object-fit: cover; }
+
+        .logout-btn { background: #ff5f56; color: #fff; padding: 8px 14px; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: bold; cursor: pointer; border: none; flex-shrink: 0; }
+
+        .btn-menu-toggle { display: none; background: #1a1d29; border: 1px solid var(--primary); color: var(--primary); font-size: 18px; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+
+        .content-body { padding: 20px; flex: 1; overflow-y: auto; background: var(--bg); display: flex; flex-direction: column; }
+        
+        .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+        .card { background: var(--card-bg); border-radius: 10px; padding: 20px; border-left: 4px solid var(--primary); border: 1px solid #232738; position: relative; }
+        .card h4 { color: var(--primary); margin-bottom: 8px; font-size: 16px; display: flex; align-items: center; gap: 10px; }
+        .card p { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 12px; }
+        .card button { background: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; width: 100%; }
+
+        .iframe-container { width: 100%; flex: 1; border: none; border-radius: 8px; background: #fff; min-height: 400px; }
+        .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); z-index: 999; }
+
+        /* Chat / Amigos / Feed */
+        .feed-box { max-width: 700px; margin: auto; display: flex; flex-direction: column; gap: 20px; width: 100%; }
+        .post-input-card { background: var(--card-bg); padding: 15px; border-radius: 10px; border: 1px solid #232738; }
+        .post-card { background: var(--card-bg); padding: 15px; border-radius: 10px; border: 1px solid #232738; border-top: 3px solid var(--primary); }
+
+        .chat-msg { background: #1f2230; padding: 10px 14px; border-radius: 8px; font-size: 13px; border-left: 3px solid var(--primary); display: flex; flex-direction: column; gap: 4px; }
+        .chat-msg-header { font-size: 11px; color: var(--text-muted); font-family: monospace; display: flex; align-items: center; gap: 6px; }
+
+        @media (max-width: 768px) {
+            .btn-menu-toggle { display: block; }
+            .sidebar { position: fixed; top: 0; left: 0; transform: translateX(-100%); width: 260px; min-width: 260px; box-shadow: 5px 0 25px rgba(0,0,0,0.8); }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.active { display: block; }
+            .grid-cards { grid-template-columns: 1fr; }
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <!-- AUTH -->
+    <div id="screen-auth" class="auth-overlay">
+        <div class="auth-screen">
+            <div class="top-status">
+                <span>⚡ SIGNAL_UPLINK</span>
+                <span>🔒 VAULT_BOOT</span>
+            </div>
+            <div class="logo-container">
+                <div class="shield-icon"></div>
+                <div class="logo-title">ODIN VAULT</div>
+                <div class="logo-subtitle">Secure Operations Platform</div>
+            </div>
+            <div class="terminal-box">
+                <div class="terminal-header">
+                    <span>root@odin-vault:~$ <span id="term-action">authenticate</span></span>
+                </div>
+                <form id="auth-form" onsubmit="handleAuth(event)">
+                    <div class="input-group">
+                        <label class="input-label">&#9656; UTILIZADOR</label>
+                        <input type="text" id="auth-user" placeholder="ex: agent_x" required>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">&#9656; PALAVRA-PASSE</label>
+                        <input type="password" id="auth-pass" placeholder="••••••••" required>
+                    </div>
+                    <div class="input-group hidden" id="group-foto">
+                        <label class="input-label">&#9656; URL FOTO PERFIL (OPCIONAL)</label>
+                        <input type="text" id="auth-foto" placeholder="https://site.com/foto.jpg">
+                    </div>
+                    <button type="submit" id="auth-btn" class="btn-auth">&gt;&gt; AUTENTICAR &lt;&lt;</button>
+                </form>
+            </div>
+            <div class="auth-footer">
+                <a id="toggle-mode-text" onclick="alternarModo()">&gt; NOVO UTILIZADOR? CRIAR CONTA</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="screen-main" class="app-layout hidden">
+        <div class="sidebar-overlay" id="overlay-menu" onclick="toggleMenuMobile()"></div>
+        
+        <div class="sidebar" id="sidebar-menu">
+            <div class="sidebar-top">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h2>ODIN VAULT</h2>
+                    <span style="cursor:pointer; font-size:18px; color:var(--text-muted);" onclick="toggleMenuMobile()">✕</span>
+                </div>
+                <p>Plataforma Social & Segura</p>
+
+                <div class="menu-section-title">NAVEGAÇÃO</div>
+                <div class="nav-menu" id="botoes-container"></div>
+            </div>
+
+            <div>
+                <div class="menu-section-title">COMUNIDADE & REDE</div>
+                <div class="nav-menu">
+                    <div class="nav-item" onclick="abrirFeed(event)">🌐 Feed Público</div>
+                    <div class="nav-item" onclick="abrirAmigos(event)">👥 Lista de Amigos</div>
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted); border-top: 1px solid #232738; padding-top: 15px; margin-top: 10px;">
+                    Sessão: 
+                    <div class="user-tag" id="display-username">
+                        <img id="display-avatar" class="avatar-img" src="" alt="">
+                        <span id="display-nick">@usuario</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="main-header">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <button class="btn-menu-toggle" onclick="toggleMenuMobile()">☰</button>
+                    <h3 id="titulo-secao" style="color:var(--primary); font-size:15px; letter-spacing:1px;">TODOS OS MÓDULOS</h3>
+                </div>
+                <button class="logout-btn" onclick="sairApp()">Sair</button>
+            </div>
+            <div class="content-body" id="conteudo-principal"></div>
+        </div>
+    </div>
+
+    <script>
+        let isLogin = true;
+        let currentUser = null;
+
+        function toggleMenuMobile() {
+            document.getElementById('sidebar-menu').classList.toggle('open');
+            document.getElementById('overlay-menu').classList.toggle('active');
+        }
+
+        function alternarModo() {
+            isLogin = !isLogin;
+            document.getElementById('term-action').innerText = isLogin ? 'authenticate' : 'register_user';
+            document.getElementById('auth-btn').innerText = isLogin ? '>> AUTENTICAR <<' : '>> REGISTAR CONTA <<';
+            document.getElementById('toggle-mode-text').innerText = isLogin ? '> NOVO UTILIZADOR? CRIAR CONTA' : '< JÁ POSSUO CONTA? ENTRAR';
+            document.getElementById('group-foto').classList.toggle('hidden', isLogin);
+        }
+
+        async function handleAuth(e) {
+            e.preventDefault();
+            const usuario = document.getElementById('auth-user').value;
+            const senha = document.getElementById('auth-pass').value;
+            const foto_perfil = document.getElementById('auth-foto').value;
+            const endpoint = isLogin ? '/api/login' : '/api/registrar';
+
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ usuario, senha, foto_perfil })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                if (isLogin) {
+                    currentUser = data;
+                    abrirApp();
+                } else {
+                    alert('Conta criada com sucesso! Faça login.');
+                    alternarModo();
+                }
+            } else {
+                alert(data.mensagem || 'Erro na autenticação.');
+            }
+        }
+
+        function abrirApp() {
+            document.getElementById('screen-auth').classList.add('hidden');
+            document.getElementById('screen-main').classList.remove('hidden');
+            document.getElementById('display-nick').innerText = '@' + currentUser.usuario;
+            document.getElementById('display-avatar').src = currentUser.foto_perfil || 'https://img.icons8.com/ios-filled/100/ccff00/user-male-circle.png';
+            carregarMenuLateral();
+            carregarConteudosApp();
+        }
+
+        function sairApp() {
+            currentUser = null;
+            document.getElementById('screen-main').classList.add('hidden');
+            document.getElementById('screen-auth').classList.remove('hidden');
+            document.getElementById('auth-form').reset();
+        }
+
+        async function carregarMenuLateral() {
+            const res = await fetch('/api/botoes');
+            const botoes = await res.json();
+            const container = document.getElementById('botoes-container');
+            
+            container.innerHTML = `<div class="nav-item active" onclick="carregarConteudosApp(null, 'Todos', event)">📁 Todos os Módulos</div>`;
+            botoes.forEach(b => {
+                container.innerHTML += `<div class="nav-item" onclick="carregarConteudosApp(${b.id}, '${b.nome}', event)">📁 ${b.nome}</div>`;
+            });
+        }
+
+        async function carregarConteudosApp(botaoId = null, nomeBotao = 'Todos', event = null) {
+            if(event) {
+                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+                event.currentTarget.classList.add('active');
+            }
+            if(window.innerWidth <= 768) {
+                document.getElementById('sidebar-menu').classList.remove('open');
+                document.getElementById('overlay-menu').classList.remove('active');
+            }
+
+            document.getElementById('titulo-secao').innerText = 'MÓDULOS - ' + nomeBotao.toUpperCase();
+            const url = botaoId ? `/api/conteudos?botao_id=${botaoId}` : '/api/conteudos';
+            const res = await fetch(url);
+            const conteudos = await res.json();
+            
+            const containerBody = document.getElementById('conteudo-principal');
+            
+            if(conteudos.length === 0) {
+                containerBody.innerHTML = '<p style="color:var(--text-muted); font-size:14px;">Nenhum conteúdo registado nesta categoria.</p>';
+                return;
+            }
+
+            let html = '<div class="grid-cards">';
+            conteudos.forEach(c => {
+                html += `
+                    <div class="card">
+                        <h4>${c.titulo}</h4>
+                        <p>${c.descricao}</p>
+                        ${c.link_ferramenta ? `<button onclick="abrirFerramentaInterna('${c.link_ferramenta}', '${c.titulo}')">Abrir no App &rarr;</button>` : ''}
+                    </div>
+                `;
+            });
+            html += '</div>';
+            containerBody.innerHTML = html;
+        }
+
+        function abrirFerramentaInterna(url, titulo) {
+            document.getElementById('titulo-secao').innerText = 'FERRAMENTA: ' + titulo.toUpperCase();
+            document.getElementById('conteudo-principal').innerHTML = `
+                <div style="display: flex; flex-direction: column; height: 100%; gap: 10px;">
+                    <div style="background: #14161f; padding: 10px 15px; border-radius: 8px; border: 1px solid #232738; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 11px; color: var(--text-muted);">Se bloquear no iframe, use o botão ao lado:</span>
+                        <a href="${url}" target="_blank" style="background: var(--primary); color: #0b0c10; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 11px; text-decoration: none;">Abrir Nova Aba &rarr;</a>
+                    </div>
+                    <iframe src="${url}" class="iframe-container"></iframe>
+                </div>
+            `;
+        }
+
+        /* --- SESSÃO DE AMIGOS E CONVITES --- */
+
+        async function abrirAmigos(event) {
+            if(event) {
+                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+                event.currentTarget.classList.add('active');
+            }
+            if(window.innerWidth <= 768) toggleMenuMobile();
+
+            document.getElementById('titulo-secao').innerText = 'REDE & AMIGOS';
+
+            const res = await fetch(`/api/amigos/lista?user_id=${currentUser.id}`);
+            const data = await res.json();
+            
+            let html = `
+                <div style="max-width:800px; margin:auto; width:100%; display:flex; flex-direction:column; gap:20px;">
+                    <!-- Adicionar Amigo -->
+                    <div style="background:var(--card-bg); padding:15px; border-radius:10px; border:1px solid #232738; display:flex; gap:10px;">
+                        <input type="text" id="target-add-user" placeholder="Digite o Nick do amigo para adicionar..." style="flex:1;">
+                        <button onclick="enviarPedidoAmizade()" style="background:var(--primary); color:#0b0c10; border:none; padding:10px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">Adicionar</button>
+                    </div>
+            `;
+
+            // Pedidos Pendentes
+            if(data.pendentes.length > 0) {
+                html += `<div><h4 style="color:var(--primary); margin-bottom:10px;">PEDIDOS DE AMIZADE RECEBIDOS</h4><div class="grid-cards">`;
+                data.pendentes.forEach(p => {
+                    html += `
+                        <div class="card">
+                            <h4><img src="${p.foto_perfil}" class="avatar-img"> @${p.usuario}</h4>
+                            <div style="display:flex; gap:10px; margin-top:10px;">
+                                <button onclick="responderPedido(${p.amizade_id}, 'aceitar')" style="background:var(--primary); color:#0b0c10;">Aceitar</button>
+                                <button onclick="responderPedido(${p.amizade_id}, 'recusar')" style="border-color:#ff5f56; color:#ff5f56;">Recusar</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div></div>`;
+            }
+
+            // Lista de Amigos Confirmados
+            html += `<div><h4 style="color:var(--primary); margin-bottom:10px;">SEUS AMIGOS (${data.amigos.length})</h4>`;
+            if(data.amigos.length === 0) {
+                html += `<p style="color:var(--text-muted); font-size:13px;">Você ainda não tem amigos adicionados. Envie um convite pelo Nick acima!</p>`;
+            } else {
+                html += `<div class="grid-cards">`;
+                data.amigos.forEach(a => {
+                    html += `
+                        <div class="card">
+                            <h4><img src="${a.foto_perfil}" class="avatar-img"> @${a.usuario}</h4>
+                            <p>Amigo confirmado na rede.</p>
+                            <button onclick="abrirChatPrivado(${a.id}, '${a.usuario}', '${a.foto_perfil}')">Conversar / Enviar Ficheiro &rarr;</button>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+            html += `</div></div>`;
+
+            document.getElementById('conteudo-principal').innerHTML = html;
+        }
+
+        async function enviarPedidoAmizade() {
+            const target_username = document.getElementById('target-add-user').value;
+            if(!target_username) return alert('Digite um Nick!');
+
+            const res = await fetch('/api/amigos/pedir', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ de_id: currentUser.id, target_username })
+            });
+            const data = await res.json();
+            alert(data.mensagem);
+            if(res.ok) abrirAmigos();
+        }
+
+        async function responderPedido(amizade_id, acao) {
+            await fetch('/api/amigos/responder', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amizade_id, acao })
+            });
+            abrirAmigos();
+        }
+
+        /* --- CHAT PRIVADO CRIPTOGRAFADO COM ANEXOS --- */
+
+        async function abrirChatPrivado(outroId, outroNome, outroFoto) {
+            document.getElementById('titulo-secao').innerText = 'CHAT SEGURO: @' + outroNome.toUpperCase();
+            document.getElementById('conteudo-principal').innerHTML = `
+                <div style="display:flex; flex-direction:column; height:100%; max-width:750px; margin:auto; width:100%; background:var(--card-bg); border-radius:12px; border:1px solid #232738; padding:15px;">
+                    <div style="display:flex; align-items:center; gap:10px; border-bottom:1px solid #232738; padding-bottom:10px; margin-bottom:10px;">
+                        <img src="${outroFoto}" class="avatar-img">
+                        <span style="color:var(--primary); font-weight:bold; font-size:14px;">Canal Encriptado com @${outroNome}</span>
+                        <span style="font-size:10px; color:var(--text-muted); margin-left:auto;">🔒 END-TO-END CIPHER</span>
+                    </div>
+                    <div id="box-mensagens-chat" style="flex:1; overflow-y:auto; margin-bottom:15px; display:flex; flex-direction:column; gap:10px;"></div>
+                    
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <input type="text" id="input-msg-chat" placeholder="Escreva uma mensagem privada encriptada...">
+                        <div style="display:flex; gap:10px;">
+                            <input type="text" id="input-arq-chat" placeholder="Link de ficheiro/ferramenta (ex: Mega, Google Drive, GitHub...)" style="font-size:12px;">
+                            <button onclick="enviarMsgChat(${outroId})" style="background:var(--primary); border:none; padding:10px 20px; font-weight:bold; border-radius:6px; cursor:pointer; color:#0b0c10; white-space:nowrap;">Enviar</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            carregarMensagensChat(outroId);
+        }
+
+        async function carregarMensagensChat(outroId) {
+            const res = await fetch(`/api/chat?de_id=${currentUser.id}&para_id=${outroId}`);
+            const msgs = await res.json();
+            const box = document.getElementById('box-mensagens-chat');
+            box.innerHTML = '';
+
+            if(msgs.length === 0) {
+                box.innerHTML = '<p style="color:var(--text-muted); font-size:13px; text-align:center;">Canal vazio. Envie uma mensagem privada para iniciar!</p>';
+                return;
+            }
+
+            msgs.forEach(m => {
+                box.innerHTML += `
+                    <div class="chat-msg">
+                        <div class="chat-msg-header">
+                            <img src="${m.foto_perfil}" class="avatar-img" style="width:18px; height:18px;">
+                            <strong>@${m.remetente}:</strong>
+                        </div>
+                        <div style="color:#fff;">${m.mensagem}</div>
+                        ${m.link_arquivo ? `<div style="margin-top:5px;"><button onclick="abrirFerramentaInterna('${m.link_arquivo}', 'Ficheiro Partilhado')" style="width:auto; font-size:11px;">📂 Abrir Ficheiro / Link Partilhado &rarr;</button></div>` : ''}
+                    </div>
+                `;
+            });
+            box.scrollTop = box.scrollHeight;
+        }
+
+        async function enviarMsgChat(outroId) {
+            const input = document.getElementById('input-msg-chat');
+            const inputArq = document.getElementById('input-arq-chat');
+            const mensagem = input.value;
+            const link_arquivo = inputArq.value;
+            if(!mensagem && !link_arquivo) return;
+
+            await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ de_user_id: currentUser.id, para_user_id: outroId, mensagem, link_arquivo })
+            });
+
+            input.value = '';
+            inputArq.value = '';
+            carregarMensagensChat(outroId);
+        }
+
+        /* --- FEED PÚBLICO --- */
+
+        async function abrirFeed(event) {
+            if(event) {
+                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+                event.currentTarget.classList.add('active');
+            }
+            if(window.innerWidth <= 768) toggleMenuMobile();
+
+            document.getElementById('titulo-secao').innerText = 'FEED PÚBLICO';
+            document.getElementById('conteudo-principal').innerHTML = `
+                <div class="feed-box">
+                    <div class="post-input-card">
+                        <textarea id="texto-post" placeholder="Partilhe conhecimentos ou dicas públicas..."></textarea>
+                        <input type="text" id="link-post" placeholder="Link de ferramenta opcional..." style="margin-bottom:10px;">
+                        <button onclick="enviarPost()" style="background:var(--primary); border:none; padding:10px 20px; font-weight:bold; border-radius:6px; cursor:pointer; color:#0b0c10; width:100%;">Publicar</button>
+                    </div>
+                    <div id="lista-posts" style="display:flex; flex-direction:column; gap:15px;"></div>
+                </div>
+            `;
+            carregarPostsFeed();
+        }
+
+        async function carregarPostsFeed() {
+            const res = await fetch('/api/feed');
+            const posts = await res.json();
+            const lista = document.getElementById('lista-posts');
+            lista.innerHTML = '';
+
+            posts.forEach(p => {
+                lista.innerHTML += `
+                    <div class="post-card">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                            <img src="${p.foto_perfil || 'https://img.icons8.com/ios-filled/100/ccff00/user-male-circle.png'}" class="avatar-img">
+                            <span style="color:var(--primary); font-weight:bold; font-size:13px;">@${p.usuario}</span>
+                            <span style="font-size:11px; color:var(--text-muted);">${p.data}</span>
+                        </div>
+                        <p style="font-size:14px; color:#fff; margin-bottom:10px;">${p.conteudo}</p>
+                        ${p.link_anexo ? `<button onclick="abrirFerramentaInterna('${p.link_anexo}', 'Partilha de @${p.usuario}')">Testar Ferramenta &rarr;</button>` : ''}
+                    </div>
+                `;
+            });
+        }
+
+        async function enviarPost() {
+            const conteudo = document.getElementById('texto-post').value;
+            const link_anexo = document.getElementById('link-post').value;
+            if(!conteudo) return alert('Escreva algum conteúdo.');
+
+            await fetch('/api/feed', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ usuario_id: currentUser.id, conteudo, link_anexo })
+            });
+
+            document.getElementById('texto-post').value = '';
+            document.getElementById('link-post').value = '';
+            carregarPostsFeed();
+        }
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js');
+        }
+    </script>
+</body>
+</html>
