@@ -1,10 +1,17 @@
 from flask import Flask, jsonify, request, render_template, session, redirect, url_for
 import sqlite3
 import base64
+import os
+from werkzeug.utils import secure_filename
 from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = 'odin_vault_super_secret_key_2026'
+
+# Configuração da pasta de Uploads
+UPLOAD_FOLDER = 'static/uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 def get_db():
     conn = sqlite3.connect('vault.db')
@@ -35,6 +42,7 @@ def init_db():
         )
     ''')
 
+    # Tabela de Conteúdos atualizada com suporte a arquivo_path para downloads/imagens
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS conteudos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,6 +50,7 @@ def init_db():
             titulo TEXT NOT NULL,
             descricao TEXT NOT NULL,
             link_ferramenta TEXT,
+            arquivo_path TEXT,
             FOREIGN KEY (botao_id) REFERENCES botoes (id)
         )
     ''')
@@ -98,7 +107,7 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Função simples de encriptação/desencriptação Obfuscated Base64 (pode ser expandida para AES)
+# Função simples de encriptação/desencriptação Obfuscated Base64
 def enc_msg(texto):
     if not texto: return ""
     return "ENC_" + base64.b64encode(texto.encode('utf-8')).decode('utf-8')
@@ -203,7 +212,6 @@ def pedir_amizade():
         conn.close()
         return jsonify({"status": "erro", "mensagem": "Não pode adicionar a si mesmo!"}), 400
 
-    # Verifica se já existe pedido
     existe = conn.execute("""
         SELECT * FROM amizades 
         WHERE (de_user_id = ? AND para_user_id = ?) OR (de_user_id = ? AND para_user_id = ?)
@@ -222,7 +230,7 @@ def pedir_amizade():
 def responder_amizade():
     dados = request.json
     amizade_id = dados.get('amizade_id')
-    acao = dados.get('acao') # 'aceitar' ou 'recusar'
+    acao = dados.get('acao')
 
     conn = get_db()
     if acao == 'aceitar':
@@ -239,7 +247,6 @@ def listar_amigos_confirmados():
     user_id = request.args.get('user_id')
     conn = get_db()
     
-    # Amigos confirmados (status = 'aceito')
     query = """
         SELECT u.id, u.usuario, u.foto_perfil FROM usuarios u
         JOIN amizades a ON (a.de_user_id = u.id OR a.para_user_id = u.id)
@@ -248,7 +255,6 @@ def listar_amigos_confirmados():
     """
     amigos = conn.execute(query, (user_id, user_id, user_id)).fetchall()
 
-    # Pedidos Pendentes recebidos
     query_pendentes = """
         SELECT a.id as amizade_id, u.usuario, u.foto_perfil FROM amizades a
         JOIN usuarios u ON a.de_user_id = u.id
@@ -262,7 +268,7 @@ def listar_amigos_confirmados():
         "pendentes": [dict(p) for p in pendentes]
     })
 
-# --- APIS GESTÃO CONTEÚDOS & CHAT ENCRIPTADO ---
+# --- APIS GESTÃO CONTEÚDOS & UPLOAD DE FICHEIROS/IMAGENS ---
 
 @app.route('/api/botoes', methods=['GET', 'POST'])
 def gerenciar_botoes():
@@ -282,14 +288,28 @@ def gerenciar_botoes():
 def gerenciar_conteudos():
     conn = get_db()
     if request.method == 'POST':
-        dados = request.json
+        # Suporte a requisições multipart/form-data (com upload de arquivo/imagem) ou JSON
+        titulo = request.form.get('titulo') if request.form else request.json.get('titulo')
+        descricao = request.form.get('descricao') if request.form else request.json.get('descricao')
+        link_ferramenta = request.form.get('link_ferramenta') if request.form else request.json.get('link_ferramenta', '')
+        botao_id = request.form.get('botao_id') if request.form else request.json.get('botao_id')
+        
+        arquivo_path = None
+        if 'arquivo' in request.files:
+            arquivo = request.files['arquivo']
+            if arquivo and arquivo.filename != '':
+                filename = secure_filename(arquivo.filename)
+                file_full_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                arquivo.save(file_full_path)
+                arquivo_path = f"/static/uploads/{filename}"
+
         conn.execute(
-            "INSERT INTO conteudos (botao_id, titulo, descricao, link_ferramenta) VALUES (?, ?, ?, ?)",
-            (dados['botao_id'], dados['titulo'], dados['descricao'], dados.get('link_ferramenta', ''))
+            "INSERT INTO conteudos (botao_id, titulo, descricao, link_ferramenta, arquivo_path) VALUES (?, ?, ?, ?, ?)",
+            (botao_id, titulo, descricao, link_ferramenta, arquivo_path)
         )
         conn.commit()
         conn.close()
-        return jsonify({"status": "Conteúdo adicionado!"}), 201
+        return jsonify({"status": "Conteúdo e ficheiro adicionados com sucesso!"}), 201
 
     botao_id = request.args.get('botao_id')
     if botao_id:
@@ -341,7 +361,6 @@ def gerenciar_chat_encriptado():
     
     conn.close()
 
-    # Desencripta as mensagens ao enviar para os utilizadores autorizados
     resultado = []
     for m in raw_msgs:
         d = dict(m)

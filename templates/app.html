@@ -36,8 +36,8 @@
         
         .input-group { margin-bottom: 15px; }
         .input-label { display: block; font-size: 11px; font-weight: bold; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 1px; }
-        input, textarea { width: 100%; padding: 12px 15px; background: var(--input-bg); border: 1px solid #2d3246; border-radius: 8px; color: #fff; font-size: 14px; outline: none; transition: 0.2s; }
-        input:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 8px rgba(204,255,0,0.15); }
+        input, textarea, select { width: 100%; padding: 12px 15px; background: var(--input-bg); border: 1px solid #2d3246; border-radius: 8px; color: #fff; font-size: 14px; outline: none; transition: 0.2s; }
+        input:focus, textarea:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 8px rgba(204,255,0,0.15); }
 
         .btn-auth { width: 100%; padding: 14px; background: var(--primary); color: #0b0c10; border: none; border-radius: 8px; font-weight: 900; font-size: 14px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; margin-top: 10px; transition: 0.2s; box-shadow: 0 0 15px rgba(204,255,0,0.3); }
         .btn-auth:hover { background: #b3e600; }
@@ -62,27 +62,25 @@
         .avatar-img { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--primary); object-fit: cover; }
 
         .logout-btn { background: #ff5f56; color: #fff; padding: 8px 14px; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: bold; cursor: pointer; border: none; flex-shrink: 0; }
+        .btn-acao-topo { background: var(--primary); color: #0b0c10; padding: 8px 14px; border-radius: 6px; border: none; font-weight: bold; font-size: 12px; cursor: pointer; }
 
         .btn-menu-toggle { display: none; background: #1a1d29; border: 1px solid var(--primary); color: var(--primary); font-size: 18px; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
 
-        .content-body { padding: 20px; flex: 1; overflow-y: auto; background: var(--bg); display: flex; flex-direction: column; }
+        .content-body { padding: 20px; flex: 1; overflow-y: auto; background: var(--bg); display: flex; flex-direction: column; gap: 20px; }
         
         .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
-        .card { background: var(--card-bg); border-radius: 10px; padding: 20px; border-left: 4px solid var(--primary); border: 1px solid #232738; position: relative; }
-        .card h4 { color: var(--primary); margin-bottom: 8px; font-size: 16px; display: flex; align-items: center; gap: 10px; }
-        .card p { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 12px; }
-        .card button { background: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; width: 100%; }
+        .card { background: var(--card-bg); border-radius: 10px; padding: 20px; border-left: 4px solid var(--primary); border: 1px solid #232738; position: relative; display: flex; flex-direction: column; gap: 10px; }
+        .card h4 { color: var(--primary); font-size: 16px; display: flex; align-items: center; gap: 10px; }
+        .card p { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+        .card button, .card a.btn-card { background: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; width: 100%; text-align: center; text-decoration: none; display: block; }
+        .card a.btn-download { background: var(--primary); color: #0b0c10; border: none; }
 
         .iframe-container { width: 100%; flex: 1; border: none; border-radius: 8px; background: #fff; min-height: 400px; }
         .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); z-index: 999; }
 
-        /* Chat / Amigos / Feed */
-        .feed-box { max-width: 700px; margin: auto; display: flex; flex-direction: column; gap: 20px; width: 100%; }
-        .post-input-card { background: var(--card-bg); padding: 15px; border-radius: 10px; border: 1px solid #232738; }
-        .post-card { background: var(--card-bg); padding: 15px; border-radius: 10px; border: 1px solid #232738; border-top: 3px solid var(--primary); }
-
-        .chat-msg { background: #1f2230; padding: 10px 14px; border-radius: 8px; font-size: 13px; border-left: 3px solid var(--primary); display: flex; flex-direction: column; gap: 4px; }
-        .chat-msg-header { font-size: 11px; color: var(--text-muted); font-family: monospace; display: flex; align-items: center; gap: 6px; }
+        /* Formulário de Upload Moderno */
+        .upload-panel { background: var(--card-bg); border: 1px solid #232738; border-radius: 10px; padding: 20px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .upload-panel h3 { color: var(--primary); font-size: 16px; }
 
         @media (max-width: 768px) {
             .btn-menu-toggle { display: block; }
@@ -173,7 +171,10 @@
                     <button class="btn-menu-toggle" onclick="toggleMenuMobile()">☰</button>
                     <h3 id="titulo-secao" style="color:var(--primary); font-size:15px; letter-spacing:1px;">TODOS OS MÓDULOS</h3>
                 </div>
-                <button class="logout-btn" onclick="sairApp()">Sair</button>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn-acao-topo" onclick="mostrarPainelUpload()">+ Novo Conteúdo</button>
+                    <button class="logout-btn" onclick="sairApp()">Sair</button>
+                </div>
             </div>
             <div class="content-body" id="conteudo-principal"></div>
         </div>
@@ -182,6 +183,8 @@
     <script>
         let isLogin = true;
         let currentUser = null;
+        let listaBotoesGlobais = [];
+        let categoriaAtualId = null;
 
         function toggleMenuMobile() {
             document.getElementById('sidebar-menu').classList.toggle('open');
@@ -241,16 +244,17 @@
 
         async function carregarMenuLateral() {
             const res = await fetch('/api/botoes');
-            const botoes = await res.json();
+            listaBotoesGlobais = await res.json();
             const container = document.getElementById('botoes-container');
             
             container.innerHTML = `<div class="nav-item active" onclick="carregarConteudosApp(null, 'Todos', event)">📁 Todos os Módulos</div>`;
-            botoes.forEach(b => {
+            listaBotoesGlobais.forEach(b => {
                 container.innerHTML += `<div class="nav-item" onclick="carregarConteudosApp(${b.id}, '${b.nome}', event)">📁 ${b.nome}</div>`;
             });
         }
 
         async function carregarConteudosApp(botaoId = null, nomeBotao = 'Todos', event = null) {
+            categoriaAtualId = botaoId;
             if(event) {
                 document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
                 event.currentTarget.classList.add('active');
@@ -267,254 +271,123 @@
             
             const containerBody = document.getElementById('conteudo-principal');
             
+            let html = '';
+            
+            // Grid de cards com os conteúdos e botões de download / iframe
             if(conteudos.length === 0) {
-                containerBody.innerHTML = '<p style="color:var(--text-muted); font-size:14px;">Nenhum conteúdo registado nesta categoria.</p>';
-                return;
+                html += '<p style="color:var(--text-muted); font-size:14px;">Nenhum conteúdo registado nesta categoria.</p>';
+            } else {
+                html += '<div class="grid-cards">';
+                conteudos.forEach(c => {
+                    html += `
+                        <div class="card">
+                            <h4>${c.titulo}</h4>
+                            <p>${c.descricao}</p>
+                            ${c.link_ferramenta ? `<button onclick="abrirFerramentaInterna('${c.link_ferramenta}', '${c.titulo}')">Abrir Ferramenta &rarr;</button>` : ''}
+                            ${c.arquivo_path ? `<a href="${c.arquivo_path}" download class="btn-card btn-download">Baixar Anexo / Imagem &darr;</a>` : ''}
+                        </div>
+                    `;
+                });
+                html += '</div>';
             }
 
-            let html = '<div class="grid-cards">';
-            conteudos.forEach(c => {
-                html += `
-                    <div class="card">
-                        <h4>${c.titulo}</h4>
-                        <p>${c.descricao}</p>
-                        ${c.link_ferramenta ? `<button onclick="abrirFerramentaInterna('${c.link_ferramenta}', '${c.titulo}')">Abrir no App &rarr;</button>` : ''}
-                    </div>
-                `;
-            });
-            html += '</div>';
             containerBody.innerHTML = html;
+        }
+
+        function mostrarPainelUpload() {
+            let optionsHtml = '';
+            listaBotoesGlobais.forEach(b => {
+                const selected = categoriaAtualId == b.id ? 'selected' : '';
+                optionsHtml += `<option value="${b.id}" ${selected}>${b.nome}</option>`;
+            });
+
+            const containerBody = document.getElementById('conteudo-principal');
+            containerBody.innerHTML = `
+                <div class="upload-panel">
+                    <h3>🚀 Adicionar Novo Conteúdo ou Ficheiro</h3>
+                    <form id="form-novo-conteudo" onsubmit="enviarNovoConteudo(event)" style="display:flex; flex-direction:column; gap:12px;">
+                        <div>
+                            <label class="input-label">CATEGORIA / MÓDULO</label>
+                            <select id="novo-botao-id" required>
+                                <option value="">Selecione uma categoria...</option>
+                                ${optionsHtml}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="input-label">TÍTULO</label>
+                            <input type="text" id="novo-titulo" placeholder="Ex: Manual de Operações ou Script" required>
+                        </div>
+                        <div>
+                            <label class="input-label">DESCRIÇÃO</label>
+                            <textarea id="novo-descricao" rows="3" placeholder="Detalhes do conteúdo..." required></textarea>
+                        </div>
+                        <div>
+                            <label class="input-label">LINK EXTERNO (OPCIONAL)</label>
+                            <input type="text" id="novo-link" placeholder="https://exemplo.com">
+                        </div>
+                        <div>
+                            <label class="input-label">ANEXAR FICHEIRO OU IMAGEM (OPCIONAL)</label>
+                            <input type="file" id="novo-arquivo">
+                        </div>
+                        <div style="display:flex; gap:10px; margin-top:10px;">
+                            <button type="submit" class="btn-auth" style="margin-top:0;">Publicar Conteúdo</button>
+                            <button type="button" onclick="carregarConteudosApp(categoriaAtualId, 'Atual')" style="background:transparent; border:1px solid var(--text-muted); color:var(--text-muted); padding:12px; border-radius:8px; font-weight:bold; cursor:pointer;">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+        }
+
+        async function enviarNovoConteudo(e) {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('botao_id', document.getElementById('novo-botao-id').value);
+            formData.append('titulo', document.getElementById('novo-titulo').value);
+            formData.append('descricao', document.getElementById('novo-descricao').value);
+            formData.append('link_ferramenta', document.getElementById('novo-link').value);
+            
+            const arquivoInput = document.getElementById('novo-arquivo').files[0];
+            if (arquivoInput) {
+                formData.append('arquivo', arquivoInput);
+            }
+
+            const res = await fetch('/api/conteudos', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                alert('Conteúdo publicado com sucesso!');
+                carregarConteudosApp(categoriaAtualId, 'Atual');
+            } else {
+                alert('Erro ao enviar o conteúdo.');
+            }
         }
 
         function abrirFerramentaInterna(url, titulo) {
             document.getElementById('titulo-secao').innerText = 'FERRAMENTA: ' + titulo.toUpperCase();
-            document.getElementById('conteudo-principal').innerHTML = `
-                <div style="display: flex; flex-direction: column; height: 100%; gap: 10px;">
-                    <div style="background: #14161f; padding: 10px 15px; border-radius: 8px; border: 1px solid #232738; display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 11px; color: var(--text-muted);">Se bloquear no iframe, use o botão ao lado:</span>
-                        <a href="${url}" target="_blank" style="background: var(--primary); color: #0b0c10; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 11px; text-decoration: none;">Abrir Nova Aba &rarr;</a>
-                    </div>
-                    <iframe src="${url}" class="iframe-container"></iframe>
-                </div>
-            `;
-        }
-
-        /* --- SESSÃO DE AMIGOS E CONVITES --- */
-
-        async function abrirAmigos(event) {
-            if(event) {
-                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-                event.currentTarget.classList.add('active');
-            }
-            if(window.innerWidth <= 768) toggleMenuMobile();
-
-            document.getElementById('titulo-secao').innerText = 'REDE & AMIGOS';
-
-            const res = await fetch(`/api/amigos/lista?user_id=${currentUser.id}`);
-            const data = await res.json();
             
-            let html = `
-                <div style="max-width:800px; margin:auto; width:100%; display:flex; flex-direction:column; gap:20px;">
-                    <!-- Adicionar Amigo -->
-                    <div style="background:var(--card-bg); padding:15px; border-radius:10px; border:1px solid #232738; display:flex; gap:10px;">
-                        <input type="text" id="target-add-user" placeholder="Digite o Nick do amigo para adicionar..." style="flex:1;">
-                        <button onclick="enviarPedidoAmizade()" style="background:var(--primary); color:#0b0c10; border:none; padding:10px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">Adicionar</button>
+            const isExternoBloqueado = url.includes('github.com') || url.includes('google.com');
+
+            if (isExternoBloqueado) {
+                document.getElementById('conteudo-principal').innerHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 20px; background: var(--card-bg); border-radius: 8px; border: 1px solid #232738; padding: 30px; text-align: center;">
+                        <h3 style="color: var(--primary);">Acesso Externo Protegido</h3>
+                        <p style="color: var(--text-muted); max-width: 400px; font-size: 14px;">Este site bloqueia a exibição direta por razões de segurança. Clique no botão abaixo para abri-lo numa nova aba com total segurança.</p>
+                        <a href="${url}" target="_blank" style="background: var(--primary); color: #0b0c10; padding: 12px 24px; border-radius: 8px; font-weight: bold; font-size: 14px; text-decoration: none; box-shadow: 0 0 15px rgba(204,255,0,0.3);">Abrir ${titulo} em Nova Aba &rarr;</a>
                     </div>
-            `;
-
-            // Pedidos Pendentes
-            if(data.pendentes.length > 0) {
-                html += `<div><h4 style="color:var(--primary); margin-bottom:10px;">PEDIDOS DE AMIZADE RECEBIDOS</h4><div class="grid-cards">`;
-                data.pendentes.forEach(p => {
-                    html += `
-                        <div class="card">
-                            <h4><img src="${p.foto_perfil}" class="avatar-img"> @${p.usuario}</h4>
-                            <div style="display:flex; gap:10px; margin-top:10px;">
-                                <button onclick="responderPedido(${p.amizade_id}, 'aceitar')" style="background:var(--primary); color:#0b0c10;">Aceitar</button>
-                                <button onclick="responderPedido(${p.amizade_id}, 'recusar')" style="border-color:#ff5f56; color:#ff5f56;">Recusar</button>
-                            </div>
-                        </div>
-                    `;
-                });
-                html += `</div></div>`;
-            }
-
-            // Lista de Amigos Confirmados
-            html += `<div><h4 style="color:var(--primary); margin-bottom:10px;">SEUS AMIGOS (${data.amigos.length})</h4>`;
-            if(data.amigos.length === 0) {
-                html += `<p style="color:var(--text-muted); font-size:13px;">Você ainda não tem amigos adicionados. Envie um convite pelo Nick acima!</p>`;
+                `;
             } else {
-                html += `<div class="grid-cards">`;
-                data.amigos.forEach(a => {
-                    html += `
-                        <div class="card">
-                            <h4><img src="${a.foto_perfil}" class="avatar-img"> @${a.usuario}</h4>
-                            <p>Amigo confirmado na rede.</p>
-                            <button onclick="abrirChatPrivado(${a.id}, '${a.usuario}', '${a.foto_perfil}')">Conversar / Enviar Ficheiro &rarr;</button>
+                document.getElementById('conteudo-principal').innerHTML = `
+                    <div style="display: flex; flex-direction: column; height: 100%; gap: 10px;">
+                        <div style="background: #14161f; padding: 10px 15px; border-radius: 8px; border: 1px solid #232738; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 11px; color: var(--text-muted);">Se bloquear no iframe, use o botão ao lado:</span>
+                            <a href="${url}" target="_blank" style="background: var(--primary); color: #0b0c10; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 11px; text-decoration: none;">Abrir Nova Aba &rarr;</a>
                         </div>
-                    `;
-                });
-                html += `</div>`;
-            }
-            html += `</div></div>`;
-
-            document.getElementById('conteudo-principal').innerHTML = html;
-        }
-
-        async function enviarPedidoAmizade() {
-            const target_username = document.getElementById('target-add-user').value;
-            if(!target_username) return alert('Digite um Nick!');
-
-            const res = await fetch('/api/amigos/pedir', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ de_id: currentUser.id, target_username })
-            });
-            const data = await res.json();
-            alert(data.mensagem);
-            if(res.ok) abrirAmigos();
-        }
-
-        async function responderPedido(amizade_id, acao) {
-            await fetch('/api/amigos/responder', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amizade_id, acao })
-            });
-            abrirAmigos();
-        }
-
-        /* --- CHAT PRIVADO CRIPTOGRAFADO COM ANEXOS --- */
-
-        async function abrirChatPrivado(outroId, outroNome, outroFoto) {
-            document.getElementById('titulo-secao').innerText = 'CHAT SEGURO: @' + outroNome.toUpperCase();
-            document.getElementById('conteudo-principal').innerHTML = `
-                <div style="display:flex; flex-direction:column; height:100%; max-width:750px; margin:auto; width:100%; background:var(--card-bg); border-radius:12px; border:1px solid #232738; padding:15px;">
-                    <div style="display:flex; align-items:center; gap:10px; border-bottom:1px solid #232738; padding-bottom:10px; margin-bottom:10px;">
-                        <img src="${outroFoto}" class="avatar-img">
-                        <span style="color:var(--primary); font-weight:bold; font-size:14px;">Canal Encriptado com @${outroNome}</span>
-                        <span style="font-size:10px; color:var(--text-muted); margin-left:auto;">🔒 END-TO-END CIPHER</span>
-                    </div>
-                    <div id="box-mensagens-chat" style="flex:1; overflow-y:auto; margin-bottom:15px; display:flex; flex-direction:column; gap:10px;"></div>
-                    
-                    <div style="display:flex; flex-direction:column; gap:8px;">
-                        <input type="text" id="input-msg-chat" placeholder="Escreva uma mensagem privada encriptada...">
-                        <div style="display:flex; gap:10px;">
-                            <input type="text" id="input-arq-chat" placeholder="Link de ficheiro/ferramenta (ex: Mega, Google Drive, GitHub...)" style="font-size:12px;">
-                            <button onclick="enviarMsgChat(${outroId})" style="background:var(--primary); border:none; padding:10px 20px; font-weight:bold; border-radius:6px; cursor:pointer; color:#0b0c10; white-space:nowrap;">Enviar</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            carregarMensagensChat(outroId);
-        }
-
-        async function carregarMensagensChat(outroId) {
-            const res = await fetch(`/api/chat?de_id=${currentUser.id}&para_id=${outroId}`);
-            const msgs = await res.json();
-            const box = document.getElementById('box-mensagens-chat');
-            box.innerHTML = '';
-
-            if(msgs.length === 0) {
-                box.innerHTML = '<p style="color:var(--text-muted); font-size:13px; text-align:center;">Canal vazio. Envie uma mensagem privada para iniciar!</p>';
-                return;
-            }
-
-            msgs.forEach(m => {
-                box.innerHTML += `
-                    <div class="chat-msg">
-                        <div class="chat-msg-header">
-                            <img src="${m.foto_perfil}" class="avatar-img" style="width:18px; height:18px;">
-                            <strong>@${m.remetente}:</strong>
-                        </div>
-                        <div style="color:#fff;">${m.mensagem}</div>
-                        ${m.link_arquivo ? `<div style="margin-top:5px;"><button onclick="abrirFerramentaInterna('${m.link_arquivo}', 'Ficheiro Partilhado')" style="width:auto; font-size:11px;">📂 Abrir Ficheiro / Link Partilhado &rarr;</button></div>` : ''}
+                        <iframe src="${url}" class="iframe-container"></iframe>
                     </div>
                 `;
-            });
-            box.scrollTop = box.scrollHeight;
-        }
-
-        async function enviarMsgChat(outroId) {
-            const input = document.getElementById('input-msg-chat');
-            const inputArq = document.getElementById('input-arq-chat');
-            const mensagem = input.value;
-            const link_arquivo = inputArq.value;
-            if(!mensagem && !link_arquivo) return;
-
-            await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ de_user_id: currentUser.id, para_user_id: outroId, mensagem, link_arquivo })
-            });
-
-            input.value = '';
-            inputArq.value = '';
-            carregarMensagensChat(outroId);
-        }
-
-        /* --- FEED PÚBLICO --- */
-
-        async function abrirFeed(event) {
-            if(event) {
-                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-                event.currentTarget.classList.add('active');
             }
-            if(window.innerWidth <= 768) toggleMenuMobile();
-
-            document.getElementById('titulo-secao').innerText = 'FEED PÚBLICO';
-            document.getElementById('conteudo-principal').innerHTML = `
-                <div class="feed-box">
-                    <div class="post-input-card">
-                        <textarea id="texto-post" placeholder="Partilhe conhecimentos ou dicas públicas..."></textarea>
-                        <input type="text" id="link-post" placeholder="Link de ferramenta opcional..." style="margin-bottom:10px;">
-                        <button onclick="enviarPost()" style="background:var(--primary); border:none; padding:10px 20px; font-weight:bold; border-radius:6px; cursor:pointer; color:#0b0c10; width:100%;">Publicar</button>
-                    </div>
-                    <div id="lista-posts" style="display:flex; flex-direction:column; gap:15px;"></div>
-                </div>
-            `;
-            carregarPostsFeed();
-        }
-
-        async function carregarPostsFeed() {
-            const res = await fetch('/api/feed');
-            const posts = await res.json();
-            const lista = document.getElementById('lista-posts');
-            lista.innerHTML = '';
-
-            posts.forEach(p => {
-                lista.innerHTML += `
-                    <div class="post-card">
-                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-                            <img src="${p.foto_perfil || 'https://img.icons8.com/ios-filled/100/ccff00/user-male-circle.png'}" class="avatar-img">
-                            <span style="color:var(--primary); font-weight:bold; font-size:13px;">@${p.usuario}</span>
-                            <span style="font-size:11px; color:var(--text-muted);">${p.data}</span>
-                        </div>
-                        <p style="font-size:14px; color:#fff; margin-bottom:10px;">${p.conteudo}</p>
-                        ${p.link_anexo ? `<button onclick="abrirFerramentaInterna('${p.link_anexo}', 'Partilha de @${p.usuario}')">Testar Ferramenta &rarr;</button>` : ''}
-                    </div>
-                `;
-            });
-        }
-
-        async function enviarPost() {
-            const conteudo = document.getElementById('texto-post').value;
-            const link_anexo = document.getElementById('link-post').value;
-            if(!conteudo) return alert('Escreva algum conteúdo.');
-
-            await fetch('/api/feed', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ usuario_id: currentUser.id, conteudo, link_anexo })
-            });
-
-            document.getElementById('texto-post').value = '';
-            document.getElementById('link-post').value = '';
-            carregarPostsFeed();
-        }
-
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/static/sw.js');
         }
     </script>
 </body>
