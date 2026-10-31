@@ -15,6 +15,7 @@
             --input-bg: #1f2230;
             --text: #ffffff;
             --text-muted: #8c92a4;
+            --danger: #ff5f56;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -61,7 +62,7 @@
         .user-tag { color: var(--primary); font-family: monospace; font-size: 13px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
         .avatar-img { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--primary); object-fit: cover; }
 
-        .logout-btn { background: #ff5f56; color: #fff; padding: 8px 14px; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: bold; cursor: pointer; border: none; flex-shrink: 0; }
+        .logout-btn { background: var(--danger); color: #fff; padding: 8px 14px; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: bold; cursor: pointer; border: none; flex-shrink: 0; }
         .btn-acao-topo { background: var(--primary); color: #0b0c10; padding: 8px 14px; border-radius: 6px; border: none; font-weight: bold; font-size: 12px; cursor: pointer; }
 
         .btn-menu-toggle { display: none; background: #1a1d29; border: 1px solid var(--primary); color: var(--primary); font-size: 18px; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
@@ -74,6 +75,8 @@
         .card p { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
         .card button, .card a.btn-card { background: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; width: 100%; text-align: center; text-decoration: none; display: block; }
         .card a.btn-download { background: var(--primary); color: #0b0c10; border: none; }
+        .btn-delete { background: rgba(255, 95, 86, 0.1) !important; border: 1px solid var(--danger) !important; color: var(--danger) !important; }
+        .btn-delete:hover { background: var(--danger) !important; color: #fff !important; }
 
         .iframe-container { width: 100%; flex: 1; border: none; border-radius: 8px; background: #fff; min-height: 400px; }
         .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); z-index: 999; }
@@ -177,6 +180,7 @@
         let currentUser = null;
         let listaBotoesGlobais = [];
         let categoriaAtualId = null;
+        let nomeCategoriaAtual = 'Todos';
 
         function toggleMenuMobile() {
             document.getElementById('sidebar-menu').classList.toggle('open');
@@ -247,6 +251,8 @@
 
         async function carregarConteudosApp(botaoId = null, nomeBotao = 'Todos', event = null) {
             categoriaAtualId = botaoId;
+            nomeCategoriaAtual = nomeBotao;
+            
             if(event) {
                 document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
                 event.currentTarget.classList.add('active');
@@ -269,12 +275,15 @@
             } else {
                 html += '<div class="grid-cards">';
                 conteudos.forEach(c => {
+                    const podeApagar = currentUser && currentUser.role === 'admin';
+                    
                     html += `
                         <div class="card">
                             <h4>${c.titulo}</h4>
                             <p>${c.descricao}</p>
                             ${c.link_ferramenta ? `<button onclick="abrirFerramentaInterna('${c.link_ferramenta}', '${c.titulo}')">Abrir Ferramenta &rarr;</button>` : ''}
                             ${c.arquivo_path ? `<a href="${c.arquivo_path}" download class="btn-card btn-download">Baixar Anexo / Imagem &darr;</a>` : ''}
+                            ${podeApagar ? `<button onclick="deletarConteudo(${c.id})" class="btn-card btn-delete">Eliminar Conteúdo 🗑️</button>` : ''}
                         </div>
                     `;
                 });
@@ -282,6 +291,22 @@
             }
 
             containerBody.innerHTML = html;
+        }
+
+        async function deletarConteudo(id) {
+            if(!confirm('Tem certeza de que deseja eliminar este conteúdo?')) return;
+
+            const res = await fetch(`/api/conteudos/deletar/${id}`, {
+                method: 'DELETE'
+            });
+
+            if(res.ok) {
+                alert('Conteúdo eliminado com sucesso!');
+                carregarConteudosApp(categoriaAtualId, nomeCategoriaAtual);
+            } else {
+                const data = await res.json();
+                alert(data.mensagem || 'Erro ao eliminar conteúdo.');
+            }
         }
 
         function mostrarPainelUpload() {
@@ -321,7 +346,7 @@
                         </div>
                         <div style="display:flex; gap:10px; margin-top:10px;">
                             <button type="submit" class="btn-auth" style="margin-top:0;">Publicar Conteúdo</button>
-                            <button type="button" onclick="carregarConteudosApp(categoriaAtualId, 'Atual')" style="background:transparent; border:1px solid var(--text-muted); color:var(--text-muted); padding:12px; border-radius:8px; font-weight:bold; cursor:pointer;">Cancelar</button>
+                            <button type="button" onclick="carregarConteudosApp(categoriaAtualId, nomeCategoriaAtual)" style="background:transparent; border:1px solid var(--text-muted); color:var(--text-muted); padding:12px; border-radius:8px; font-weight:bold; cursor:pointer;">Cancelar</button>
                         </div>
                     </form>
                 </div>
@@ -348,7 +373,7 @@
 
             if (res.ok) {
                 alert('Conteúdo publicado com sucesso!');
-                carregarConteudosApp(categoriaAtualId, 'Atual');
+                carregarConteudosApp(categoriaAtualId, nomeCategoriaAtual);
             } else {
                 alert('Erro ao enviar o conteúdo.');
             }

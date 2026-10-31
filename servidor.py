@@ -231,6 +231,35 @@ def gerenciar_conteudos():
     conn.close()
     return jsonify([dict(c) for c in conteudos])
 
+@app.route('/api/conteudos/deletar/<int:conteudo_id>', methods=['DELETE'])
+def deletar_conteudo(conteudo_id):
+    if 'usuario' not in session:
+        return jsonify({"status": "erro", "mensagem": "Não autorizado"}), 401
+    
+    conn = get_db()
+    conteudo = conn.execute("SELECT * FROM conteudos WHERE id = ?", (conteudo_id,)).fetchone()
+    
+    if not conteudo:
+        conn.close()
+        return jsonify({"status": "erro", "mensagem": "Conteúdo não encontrado"}), 404
+    
+    if session.get('role') != 'admin':
+        conn.close()
+        return jsonify({"status": "erro", "mensagem": "Apenas administradores podem apagar conteúdos."}), 403
+
+    if conteudo['arquivo_path']:
+        file_path = os.path.join(app.root_path, conteudo['arquivo_path'].lstrip('/'))
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except:
+                pass
+
+    conn.execute("DELETE FROM conteudos WHERE id = ?", (conteudo_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "sucesso", "mensagem": "Conteúdo apagado com sucesso!"})
+
 if __name__ == '__main__':
     init_db()
     app.run(host='0.0.0.0', port=5000, debug=True)
