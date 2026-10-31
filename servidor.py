@@ -22,7 +22,6 @@ def init_db():
     conn = get_db()
     cursor = conn.cursor()
     
-    # Tabela de Utilizadores com Foto de Perfil
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,7 +41,6 @@ def init_db():
         )
     ''')
 
-    # Tabela de Conteúdos atualizada com suporte a arquivo_path para downloads/imagens
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS conteudos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,7 +53,6 @@ def init_db():
         )
     ''')
 
-    # Sistema de Amizades (Com status: 'pendente' ou 'aceito')
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS amizades (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -78,7 +75,6 @@ def init_db():
         )
     ''')
 
-    # Mensagens Criptografadas no Chat Privado com suporte a Ficheiros
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS mensagens (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -107,7 +103,6 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Função simples de encriptação/desencriptação Obfuscated Base64
 def enc_msg(texto):
     if not texto: return ""
     return "ENC_" + base64.b64encode(texto.encode('utf-8')).decode('utf-8')
@@ -119,8 +114,6 @@ def dec_msg(texto_enc):
         return base64.b64decode(raw.encode('utf-8')).decode('utf-8')
     except:
         return texto_enc
-
-# --- ROTAS WEB ---
 
 @app.route('/')
 @admin_required
@@ -134,8 +127,6 @@ def app_client():
 @app.route('/login')
 def login_page():
     return redirect(url_for('app_client'))
-
-# --- APIS DE AUTENTICAÇÃO E PERFIL ---
 
 @app.route('/api/login', methods=['POST'])
 def api_login():
@@ -180,96 +171,6 @@ def api_registrar():
         conn.close()
         return jsonify({"status": "erro", "mensagem": "Nome de utilizador já existe!"}), 400
 
-@app.route('/api/perfil/atualizar', methods=['POST'])
-def atualizar_perfil():
-    dados = request.json
-    user_id = dados.get('user_id')
-    foto = dados.get('foto_perfil')
-    
-    conn = get_db()
-    conn.execute("UPDATE usuarios SET foto_perfil = ? WHERE id = ?", (foto, user_id))
-    conn.commit()
-    conn.close()
-    return jsonify({"status": "sucesso", "mensagem": "Foto atualizada!"})
-
-# --- APIS DE AMIZADES ---
-
-@app.route('/api/amigos/pedir', methods=['POST'])
-def pedir_amizade():
-    dados = request.json
-    de_id = dados.get('de_id')
-    target_username = dados.get('target_username')
-
-    conn = get_db()
-    target = conn.execute("SELECT id FROM usuarios WHERE usuario = ?", (target_username,)).fetchone()
-    
-    if not target:
-        conn.close()
-        return jsonify({"status": "erro", "mensagem": "Utilizador não encontrado!"}), 404
-    
-    para_id = target['id']
-    if de_id == para_id:
-        conn.close()
-        return jsonify({"status": "erro", "mensagem": "Não pode adicionar a si mesmo!"}), 400
-
-    existe = conn.execute("""
-        SELECT * FROM amizades 
-        WHERE (de_user_id = ? AND para_user_id = ?) OR (de_user_id = ? AND para_user_id = ?)
-    """, (de_id, para_id, para_id, de_id)).fetchone()
-
-    if existe:
-        conn.close()
-        return jsonify({"status": "erro", "mensagem": "Pedido de amizade já existente ou pendente!"}), 400
-
-    conn.execute("INSERT INTO amizades (de_user_id, para_user_id, status) VALUES (?, ?, 'pendente')", (de_id, para_id))
-    conn.commit()
-    conn.close()
-    return jsonify({"status": "sucesso", "mensagem": "Pedido de amizade enviado!"})
-
-@app.route('/api/amigos/responder', methods=['POST'])
-def responder_amizade():
-    dados = request.json
-    amizade_id = dados.get('amizade_id')
-    acao = dados.get('acao')
-
-    conn = get_db()
-    if acao == 'aceitar':
-        conn.execute("UPDATE amizades SET status = 'aceito' WHERE id = ?", (amizade_id,))
-    else:
-        conn.execute("DELETE FROM amizades WHERE id = ?", (amizade_id,))
-    
-    conn.commit()
-    conn.close()
-    return jsonify({"status": "sucesso"})
-
-@app.route('/api/amigos/lista', methods=['GET'])
-def listar_amigos_confirmados():
-    user_id = request.args.get('user_id')
-    conn = get_db()
-    
-    query = """
-        SELECT u.id, u.usuario, u.foto_perfil FROM usuarios u
-        JOIN amizades a ON (a.de_user_id = u.id OR a.para_user_id = u.id)
-        WHERE (a.de_user_id = ? OR a.para_user_id = ?) 
-        AND a.status = 'aceito' AND u.id != ?
-    """
-    amigos = conn.execute(query, (user_id, user_id, user_id)).fetchall()
-
-    query_pendentes = """
-        SELECT a.id as amizade_id, u.usuario, u.foto_perfil FROM amizades a
-        JOIN usuarios u ON a.de_user_id = u.id
-        WHERE a.para_user_id = ? AND a.status = 'pendente'
-    """
-    pendentes = conn.execute(query_pendentes, (user_id,)).fetchall()
-
-    conn.close()
-    return jsonify({
-        "amigos": [dict(a) for a in amigos],
-        "pendentes": [dict(p) for p in pendentes]
-    })
-
-# --- APIS GESTÃO CONTEÚDOS & UPLOAD DE FICHEIROS/IMAGENS ---
-
 @app.route('/api/botoes', methods=['GET', 'POST'])
 def gerenciar_botoes():
     conn = get_db()
@@ -288,11 +189,17 @@ def gerenciar_botoes():
 def gerenciar_conteudos():
     conn = get_db()
     if request.method == 'POST':
-        # Suporte a requisições multipart/form-data (com upload de arquivo/imagem) ou JSON
-        titulo = request.form.get('titulo') if request.form else request.json.get('titulo')
-        descricao = request.form.get('descricao') if request.form else request.json.get('descricao')
-        link_ferramenta = request.form.get('link_ferramenta') if request.form else request.json.get('link_ferramenta', '')
-        botao_id = request.form.get('botao_id') if request.form else request.json.get('botao_id')
+        if request.form:
+            titulo = request.form.get('titulo')
+            descricao = request.form.get('descricao')
+            link_ferramenta = request.form.get('link_ferramenta', '')
+            botao_id = request.form.get('botao_id')
+        else:
+            dados = request.json or {}
+            titulo = dados.get('titulo')
+            descricao = dados.get('descricao')
+            link_ferramenta = dados.get('link_ferramenta', '')
+            botao_id = dados.get('botao_id')
         
         arquivo_path = None
         if 'arquivo' in request.files:
@@ -303,13 +210,17 @@ def gerenciar_conteudos():
                 arquivo.save(file_full_path)
                 arquivo_path = f"/static/uploads/{filename}"
 
+        if not botao_id or not titulo:
+            conn.close()
+            return jsonify({"status": "erro", "mensagem": "Campos obrigatórios em falta"}), 400
+
         conn.execute(
             "INSERT INTO conteudos (botao_id, titulo, descricao, link_ferramenta, arquivo_path) VALUES (?, ?, ?, ?, ?)",
             (botao_id, titulo, descricao, link_ferramenta, arquivo_path)
         )
         conn.commit()
         conn.close()
-        return jsonify({"status": "Conteúdo e ficheiro adicionados com sucesso!"}), 201
+        return jsonify({"status": "sucesso", "mensagem": "Conteúdo adicionado com sucesso!"}), 201
 
     botao_id = request.args.get('botao_id')
     if botao_id:
@@ -319,55 +230,6 @@ def gerenciar_conteudos():
     
     conn.close()
     return jsonify([dict(c) for c in conteudos])
-
-@app.route('/api/feed', methods=['GET', 'POST'])
-def gerenciar_feed():
-    conn = get_db()
-    if request.method == 'POST':
-        dados = request.json
-        conn.execute("INSERT INTO posts (usuario_id, conteudo, link_anexo) VALUES (?, ?, ?)", 
-                     (dados['usuario_id'], dados['conteudo'], dados.get('link_anexo', '')))
-        conn.commit()
-        conn.close()
-        return jsonify({"status": "Publicado com sucesso!"}), 201
-
-    posts = conn.execute("SELECT p.*, u.usuario, u.foto_perfil FROM posts p JOIN usuarios u ON p.usuario_id = u.id ORDER BY p.id DESC").fetchall()
-    conn.close()
-    return jsonify([dict(p) for p in posts])
-
-@app.route('/api/chat', methods=['GET', 'POST'])
-def gerenciar_chat_encriptado():
-    conn = get_db()
-    if request.method == 'POST':
-        dados = request.json
-        mensagem_encriptada = enc_msg(dados['mensagem'])
-        conn.execute(
-            "INSERT INTO mensagens (de_user_id, para_user_id, mensagem, link_arquivo) VALUES (?, ?, ?, ?)", 
-            (dados['de_user_id'], dados['para_user_id'], mensagem_encriptada, dados.get('link_arquivo', ''))
-        )
-        conn.commit()
-        conn.close()
-        return jsonify({"status": "Mensagem encriptada e enviada!"}), 201
-
-    de_id = request.args.get('de_id')
-    para_id = request.args.get('para_id')
-    
-    raw_msgs = conn.execute("""
-        SELECT m.*, u.usuario as remetente, u.foto_perfil FROM mensagens m 
-        JOIN usuarios u ON m.de_user_id = u.id
-        WHERE (m.de_user_id = ? AND m.para_user_id = ?) OR (m.de_user_id = ? AND m.para_user_id = ?)
-        ORDER BY m.id ASC
-    """, (de_id, para_id, para_id, de_id)).fetchall()
-    
-    conn.close()
-
-    resultado = []
-    for m in raw_msgs:
-        d = dict(m)
-        d['mensagem'] = dec_msg(d['mensagem'])
-        resultado.append(d)
-
-    return jsonify(resultado)
 
 if __name__ == '__main__':
     init_db()

@@ -78,7 +78,6 @@
         .iframe-container { width: 100%; flex: 1; border: none; border-radius: 8px; background: #fff; min-height: 400px; }
         .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); z-index: 999; }
 
-        /* Formulário de Upload Moderno */
         .upload-panel { background: var(--card-bg); border: 1px solid #232738; border-radius: 10px; padding: 20px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 15px; }
         .upload-panel h3 { color: var(--primary); font-size: 16px; }
 
@@ -95,7 +94,6 @@
 </head>
 <body>
 
-    <!-- AUTH -->
     <div id="screen-auth" class="auth-overlay">
         <div class="auth-screen">
             <div class="top-status">
@@ -133,7 +131,6 @@
         </div>
     </div>
 
-    <!-- MAIN APP -->
     <div id="screen-main" class="app-layout hidden">
         <div class="sidebar-overlay" id="overlay-menu" onclick="toggleMenuMobile()"></div>
         
@@ -150,11 +147,6 @@
             </div>
 
             <div>
-                <div class="menu-section-title">COMUNIDADE & REDE</div>
-                <div class="nav-menu">
-                    <div class="nav-item" onclick="abrirFeed(event)">🌐 Feed Público</div>
-                    <div class="nav-item" onclick="abrirAmigos(event)">👥 Lista de Amigos</div>
-                </div>
                 <div style="font-size: 11px; color: var(--text-muted); border-top: 1px solid #232738; padding-top: 15px; margin-top: 10px;">
                     Sessão: 
                     <div class="user-tag" id="display-username">
@@ -270,10 +262,8 @@
             const conteudos = await res.json();
             
             const containerBody = document.getElementById('conteudo-principal');
-            
             let html = '';
             
-            // Grid de cards com os conteúdos e botões de download / iframe
             if(conteudos.length === 0) {
                 html += '<p style="color:var(--text-muted); font-size:14px;">Nenhum conteúdo registado nesta categoria.</p>';
             } else {
