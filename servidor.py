@@ -95,30 +95,9 @@ def init_db():
     conn.commit()
     conn.close()
 
-def admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'usuario' not in session or session.get('role') != 'admin':
-            return redirect(url_for('login_page'))
-        return f(*args, **kwargs)
-    return decorated_function
-
-def enc_msg(texto):
-    if not texto: return ""
-    return "ENC_" + base64.b64encode(texto.encode('utf-8')).decode('utf-8')
-
-def dec_msg(texto_enc):
-    if not texto_enc or not texto_enc.startswith("ENC_"): return texto_enc
-    try:
-        raw = texto_enc.replace("ENC_", "")
-        return base64.b64decode(raw.encode('utf-8')).decode('utf-8')
-    except:
-        return texto_enc
-
 @app.route('/')
-@admin_required
 def admin_panel():
-    return render_template('painel.html', usuario=session['usuario'])
+    return render_template('app.html')
 
 @app.route('/app')
 def app_client():
