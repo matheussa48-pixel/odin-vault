@@ -3,7 +3,6 @@ import sqlite3
 import base64
 import os
 from werkzeug.utils import secure_filename
-from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = 'odin_vault_super_secret_key_2026'
@@ -46,7 +45,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             botao_id INTEGER NOT NULL,
             titulo TEXT NOT NULL,
-            descricao TEXT NOT NULL,
+            descricao TEXT NOT NULL DEFAULT '',
             link_ferramenta TEXT,
             arquivo_path TEXT,
             FOREIGN KEY (botao_id) REFERENCES botoes (id)
@@ -109,7 +108,7 @@ def login_page():
 
 @app.route('/api/login', methods=['POST'])
 def api_login():
-    dados = request.form if request.form else request.json
+    dados = request.form if request.form else (request.get_json(silent=True) or {})
     usuario = dados.get('usuario')
     senha = dados.get('senha')
     
@@ -132,10 +131,10 @@ def api_login():
 
 @app.route('/api/registrar', methods=['POST'])
 def api_registrar():
-    dados = request.json
+    dados = request.get_json(silent=True) or {}
     usuario = dados.get('usuario')
     senha = dados.get('senha')
-    foto = dados.get('foto_perfil', 'https://img.icons8.com/ios-filled/100/ccff00/user-male-circle.png')
+    foto = dados.get('foto_perfil') or 'https://img.icons8.com/ios-filled/100/ccff00/user-male-circle.png'
     
     if not usuario or not senha:
         return jsonify({"status": "erro", "mensagem": "Preencha todos os campos"}), 400
@@ -154,8 +153,12 @@ def api_registrar():
 def gerenciar_botoes():
     conn = get_db()
     if request.method == 'POST':
-        dados = request.json
-        conn.execute("INSERT INTO botoes (nome, icone) VALUES (?, ?)", (dados['nome'], dados.get('icone', 'folder')))
+        dados = request.get_json(silent=True) or {}
+        nome = (dados.get('nome') or '').strip()
+        if not nome:
+            conn.close()
+            return jsonify({"status": "erro", "mensagem": "Nome do botão obrigatório"}), 400
+        conn.execute("INSERT INTO botoes (nome, icone) VALUES (?, ?)", (nome, dados.get('icone', 'folder')))
         conn.commit()
         conn.close()
         return jsonify({"status": "Botão criado!"}), 201
@@ -167,48 +170,62 @@ def gerenciar_botoes():
 @app.route('/api/conteudos', methods=['GET', 'POST'])
 def gerenciar_conteudos():
     conn = get_db()
-    if request.method == 'POST':
-        if request.form:
-            titulo = request.form.get('titulo')
-            descricao = request.form.get('descricao')
-            link_ferramenta = request.form.get('link_ferramenta', '')
-            botao_id = request.form.get('botao_id')
+    try:
+        if request.method == 'POST':
+            if request.form:
+                titulo = (request.form.get('titulo') or '').strip()
+                descricao = (request.form.get('descricao') or '').strip()
+                link_ferramenta = (request.form.get('link_ferramenta') or '').strip()
+                botao_id_raw = request.form.get('botao_id')
+            else:
+                dados = request.get_json(silent=True) or {}
+                titulo = (dados.get('titulo') or '').strip()
+                descricao = (dados.get('descricao') or '').strip()
+                link_ferramenta = (dados.get('link_ferramenta') or '').strip()
+                botao_id_raw = dados.get('botao_id')
+
+            if not botao_id_raw or not titulo:
+                return jsonify({"status": "erro", "mensagem": "Selecione uma categoria e informe um título."}), 400
+
+            try:
+                botao_id = int(botao_id_raw)
+            except (ValueError, TypeError):
+                return jsonify({"status": "erro", "mensagem": "Categoria inválida."}), 400
+
+            arquivo_path = None
+            if 'arquivo' in request.files:
+                arquivo = request.files['arquivo']
+                if arquivo and arquivo.filename:
+                    filename = secure_filename(arquivo.filename)
+                    if filename:
+                        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+                        file_full_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                        arquivo.save(file_full_path)
+                        arquivo_path = f"/static/uploads/{filename}"
+
+            conn.execute(
+                "INSERT INTO conteudos (botao_id, titulo, descricao, link_ferramenta, arquivo_path) VALUES (?, ?, ?, ?, ?)",
+                (botao_id, titulo, descricao, link_ferramenta, arquivo_path)
+            )
+            conn.commit()
+            return jsonify({"status": "sucesso", "mensagem": "Conteúdo adicionado com sucesso!"}), 201
+
+        botao_id = request.args.get('botao_id')
+        if botao_id:
+            conteudos = conn.execute(
+                "SELECT c.*, b.nome as categoria FROM conteudos c JOIN botoes b ON c.botao_id = b.id WHERE c.botao_id = ?",
+                (botao_id,)
+            ).fetchall()
         else:
-            dados = request.json or {}
-            titulo = dados.get('titulo')
-            descricao = dados.get('descricao')
-            link_ferramenta = dados.get('link_ferramenta', '')
-            botao_id = dados.get('botao_id')
+            conteudos = conn.execute(
+                "SELECT c.*, b.nome as categoria FROM conteudos c JOIN botoes b ON c.botao_id = b.id"
+            ).fetchall()
         
-        arquivo_path = None
-        if 'arquivo' in request.files:
-            arquivo = request.files['arquivo']
-            if arquivo and arquivo.filename != '':
-                filename = secure_filename(arquivo.filename)
-                file_full_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                arquivo.save(file_full_path)
-                arquivo_path = f"/static/uploads/{filename}"
-
-        if not botao_id or not titulo:
-            conn.close()
-            return jsonify({"status": "erro", "mensagem": "Campos obrigatórios em falta"}), 400
-
-        conn.execute(
-            "INSERT INTO conteudos (botao_id, titulo, descricao, link_ferramenta, arquivo_path) VALUES (?, ?, ?, ?, ?)",
-            (botao_id, titulo, descricao, link_ferramenta, arquivo_path)
-        )
-        conn.commit()
+        return jsonify([dict(c) for c in conteudos])
+    except Exception as e:
+        return jsonify({"status": "erro", "mensagem": f"Erro no servidor: {str(e)}"}), 500
+    finally:
         conn.close()
-        return jsonify({"status": "sucesso", "mensagem": "Conteúdo adicionado com sucesso!"}), 201
-
-    botao_id = request.args.get('botao_id')
-    if botao_id:
-        conteudos = conn.execute("SELECT c.*, b.nome as categoria FROM conteudos c JOIN botoes b ON c.botao_id = b.id WHERE c.botao_id = ?", (botao_id,)).fetchall()
-    else:
-        conteudos = conn.execute("SELECT c.*, b.nome as categoria FROM conteudos c JOIN botoes b ON c.botao_id = b.id").fetchall()
-    
-    conn.close()
-    return jsonify([dict(c) for c in conteudos])
 
 @app.route('/api/conteudos/deletar/<int:conteudo_id>', methods=['DELETE'])
 def deletar_conteudo(conteudo_id):
@@ -239,6 +256,8 @@ def deletar_conteudo(conteudo_id):
     conn.close()
     return jsonify({"status": "sucesso", "mensagem": "Conteúdo apagado com sucesso!"})
 
+# Garante que as tabelas existem mesmo quando o Render inicia via Gunicorn
+init_db()
+
 if __name__ == '__main__':
-    init_db()
     app.run(host='0.0.0.0', port=5000, debug=True)
