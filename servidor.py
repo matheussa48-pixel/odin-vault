@@ -1,263 +1,217 @@
-from flask import Flask, jsonify, request, render_template, session, redirect, url_for
-import sqlite3
-import base64
 import os
+import time
+import uuid
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from flask import Flask, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
+from supabase import create_client, Client
 
-app = Flask(__name__)
-app.secret_key = 'odin_vault_super_secret_key_2026'
+app = Flask(__name__, static_folder="static", static_url_path="/static")
 
-# Configuração da pasta de Uploads
-UPLOAD_FOLDER = 'static/uploads'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# Variáveis de ambiente configuradas no Render
+DATABASE_URL = os.environ.get("DATABASE_URL")
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+SUPABASE_BUCKET = os.environ.get("SUPABASE_BUCKET", "vault-files")
+
+supabase: Client | None = None
+if SUPABASE_URL and SUPABASE_KEY:
+    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
 
 def get_db():
-    conn = sqlite3.connect('vault.db')
-    conn.row_factory = sqlite3.Row
+    if not DATABASE_URL:
+        raise RuntimeError("A variável de ambiente DATABASE_URL não está configurada.")
+    conn = psycopg2.connect(DATABASE_URL, sslmode="require")
     return conn
+
 
 def init_db():
     conn = get_db()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS usuarios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario TEXT UNIQUE NOT NULL,
-            senha TEXT NOT NULL,
-            foto_perfil TEXT DEFAULT 'https://img.icons8.com/ios-filled/100/ccff00/user-male-circle.png',
-            role TEXT DEFAULT 'user',
-            status TEXT DEFAULT 'ativo'
-        )
-    ''')
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS botoes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL,
-            icone TEXT DEFAULT 'folder'
-        )
-    ''')
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS conteudos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            botao_id INTEGER NOT NULL,
-            titulo TEXT NOT NULL,
-            descricao TEXT NOT NULL DEFAULT '',
-            link_ferramenta TEXT,
-            arquivo_path TEXT,
-            FOREIGN KEY (botao_id) REFERENCES botoes (id)
-        )
-    ''')
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS amizades (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            de_user_id INTEGER NOT NULL,
-            para_user_id INTEGER NOT NULL,
-            status TEXT DEFAULT 'pendente',
-            FOREIGN KEY (de_user_id) REFERENCES usuarios (id),
-            FOREIGN KEY (para_user_id) REFERENCES usuarios (id)
-        )
-    ''')
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS posts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario_id INTEGER NOT NULL,
-            conteudo TEXT NOT NULL,
-            link_anexo TEXT,
-            data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
-        )
-    ''')
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS mensagens (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            de_user_id INTEGER NOT NULL,
-            para_user_id INTEGER NOT NULL,
-            mensagem TEXT NOT NULL,
-            link_arquivo TEXT DEFAULT '',
-            data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (de_user_id) REFERENCES usuarios (id),
-            FOREIGN KEY (para_user_id) REFERENCES usuarios (id)
-        )
-    ''')
-
-    cursor.execute("SELECT * FROM usuarios WHERE usuario = 'admin'")
-    if not cursor.fetchone():
-        cursor.execute("INSERT INTO usuarios (usuario, senha, role) VALUES ('admin', 'admin123', 'admin')")
-
-    conn.commit()
-    conn.close()
-
-@app.route('/')
-def admin_panel():
-    return render_template('app.html')
-
-@app.route('/app')
-def app_client():
-    return render_template('app.html')
-
-@app.route('/login')
-def login_page():
-    return redirect(url_for('app_client'))
-
-@app.route('/api/login', methods=['POST'])
-def api_login():
-    dados = request.form if request.form else (request.get_json(silent=True) or {})
-    usuario = dados.get('usuario')
-    senha = dados.get('senha')
-    
-    conn = get_db()
-    user = conn.execute("SELECT * FROM usuarios WHERE usuario = ? AND senha = ?", (usuario, senha)).fetchone()
-    conn.close()
-
-    if user:
-        session['usuario'] = user['usuario']
-        session['role'] = user['role']
-        session['user_id'] = user['id']
-        return jsonify({
-            "status": "sucesso", 
-            "usuario": user['usuario'], 
-            "role": user['role'], 
-            "id": user['id'],
-            "foto_perfil": user['foto_perfil']
-        })
-    return jsonify({"status": "erro", "mensagem": "Credenciais inválidas"}), 401
-
-@app.route('/api/registrar', methods=['POST'])
-def api_registrar():
-    dados = request.get_json(silent=True) or {}
-    usuario = dados.get('usuario')
-    senha = dados.get('senha')
-    foto = dados.get('foto_perfil') or 'https://img.icons8.com/ios-filled/100/ccff00/user-male-circle.png'
-    
-    if not usuario or not senha:
-        return jsonify({"status": "erro", "mensagem": "Preencha todos os campos"}), 400
-
-    conn = get_db()
     try:
-        conn.execute("INSERT INTO usuarios (usuario, senha, foto_perfil, role) VALUES (?, ?, ?, 'user')", (usuario, senha, foto))
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS categorias (
+                    id SERIAL PRIMARY KEY,
+                    nome TEXT NOT NULL,
+                    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS conteudos (
+                    id SERIAL PRIMARY KEY,
+                    titulo TEXT NOT NULL,
+                    descricao TEXT DEFAULT '',
+                    link TEXT DEFAULT '',
+                    categoria_id INTEGER REFERENCES categorias(id) ON DELETE SET NULL,
+                    arquivo_path TEXT DEFAULT '',
+                    arquivo_nome TEXT DEFAULT '',
+                    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            # Garante que a coluna arquivo_path existe caso a tabela já existisse
+            cur.execute("""
+                ALTER TABLE conteudos
+                ADD COLUMN IF NOT EXISTS arquivo_path TEXT DEFAULT '';
+            """)
+            cur.execute("""
+                ALTER TABLE conteudos
+                ADD COLUMN IF NOT EXISTS arquivo_nome TEXT DEFAULT '';
+            """)
         conn.commit()
-        conn.close()
-        return jsonify({"status": "sucesso", "mensagem": "Conta criada com sucesso!"}), 201
-    except sqlite3.IntegrityError:
-        conn.close()
-        return jsonify({"status": "erro", "mensagem": "Nome de utilizador já existe!"}), 400
-
-@app.route('/api/botoes', methods=['GET', 'POST'])
-def gerenciar_botoes():
-    conn = get_db()
-    if request.method == 'POST':
-        dados = request.get_json(silent=True) or {}
-        nome = (dados.get('nome') or '').strip()
-        if not nome:
-            conn.close()
-            return jsonify({"status": "erro", "mensagem": "Nome do botão obrigatório"}), 400
-        conn.execute("INSERT INTO botoes (nome, icone) VALUES (?, ?)", (nome, dados.get('icone', 'folder')))
-        conn.commit()
-        conn.close()
-        return jsonify({"status": "Botão criado!"}), 201
-    
-    botoes = conn.execute("SELECT * FROM botoes").fetchall()
-    conn.close()
-    return jsonify([dict(b) for b in botoes])
-
-@app.route('/api/conteudos', methods=['GET', 'POST'])
-def gerenciar_conteudos():
-    conn = get_db()
-    try:
-        if request.method == 'POST':
-            if request.form:
-                titulo = (request.form.get('titulo') or '').strip()
-                descricao = (request.form.get('descricao') or '').strip()
-                link_ferramenta = (request.form.get('link_ferramenta') or '').strip()
-                botao_id_raw = request.form.get('botao_id')
-            else:
-                dados = request.get_json(silent=True) or {}
-                titulo = (dados.get('titulo') or '').strip()
-                descricao = (dados.get('descricao') or '').strip()
-                link_ferramenta = (dados.get('link_ferramenta') or '').strip()
-                botao_id_raw = dados.get('botao_id')
-
-            if not botao_id_raw or not titulo:
-                return jsonify({"status": "erro", "mensagem": "Selecione uma categoria e informe um título."}), 400
-
-            try:
-                botao_id = int(botao_id_raw)
-            except (ValueError, TypeError):
-                return jsonify({"status": "erro", "mensagem": "Categoria inválida."}), 400
-
-            arquivo_path = None
-            if 'arquivo' in request.files:
-                arquivo = request.files['arquivo']
-                if arquivo and arquivo.filename:
-                    filename = secure_filename(arquivo.filename)
-                    if filename:
-                        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-                        file_full_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                        arquivo.save(file_full_path)
-                        arquivo_path = f"/static/uploads/{filename}"
-
-            conn.execute(
-                "INSERT INTO conteudos (botao_id, titulo, descricao, link_ferramenta, arquivo_path) VALUES (?, ?, ?, ?, ?)",
-                (botao_id, titulo, descricao, link_ferramenta, arquivo_path)
-            )
-            conn.commit()
-            return jsonify({"status": "sucesso", "mensagem": "Conteúdo adicionado com sucesso!"}), 201
-
-        botao_id = request.args.get('botao_id')
-        if botao_id:
-            conteudos = conn.execute(
-                "SELECT c.*, b.nome as categoria FROM conteudos c JOIN botoes b ON c.botao_id = b.id WHERE c.botao_id = ?",
-                (botao_id,)
-            ).fetchall()
-        else:
-            conteudos = conn.execute(
-                "SELECT c.*, b.nome as categoria FROM conteudos c JOIN botoes b ON c.botao_id = b.id"
-            ).fetchall()
-        
-        return jsonify([dict(c) for c in conteudos])
-    except Exception as e:
-        return jsonify({"status": "erro", "mensagem": f"Erro no servidor: {str(e)}"}), 500
     finally:
         conn.close()
 
-@app.route('/api/conteudos/deletar/<int:conteudo_id>', methods=['DELETE'])
-def deletar_conteudo(conteudo_id):
-    if 'usuario' not in session:
-        return jsonify({"status": "erro", "mensagem": "Não autorizado"}), 401
-    
+
+def upload_arquivo_supabase(file_storage) -> tuple[str, str]:
+    """Envia o ficheiro (.apk, .zip, imagem, etc.) para o Supabase Storage e retorna (url_publica, nome_limpo)."""
+    if not supabase:
+        raise RuntimeError("Supabase Storage não configurado. Verifique SUPABASE_URL e SUPABASE_KEY.")
+
+    nome_original = secure_filename(file_storage.filename or "arquivo.bin")
+    if not nome_original:
+        nome_original = f"arquivo_{int(time.time())}.bin"
+
+    # Evita sobrescrever ficheiros com o mesmo nome (ex.: app.apk ou backup.zip)
+    nome_unico = f"{int(time.time())}_{uuid.uuid4().hex[:8]}_{nome_original}"
+    conteudo_bytes = file_storage.read()
+    content_type = file_storage.mimetype or "application/octet-stream"
+
+    supabase.storage.from_(SUPABASE_BUCKET).upload(
+        path=nome_unico,
+        file=conteudo_bytes,
+        file_options={"content-type": content_type, "upsert": "false"},
+    )
+
+    public_url = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(nome_unico)
+    return public_url, nome_original
+
+
+# Inicializa as tabelas ao arrancar o servidor
+try:
+    init_db()
+except Exception as e:
+    print(f"[AVISO init_db]: {e}")
+
+
+@app.route("/")
+def index():
+    if os.path.exists("app.html"):
+        return send_from_directory(".", "app.html")
+    return jsonify({"status": "ok", "servico": "Odin Vault API"})
+
+
+@app.route("/api/health")
+def health():
+    return jsonify({
+        "status": "ok",
+        "db_configurado": bool(DATABASE_URL),
+        "storage_configurado": bool(supabase),
+        "bucket": SUPABASE_BUCKET,
+    })
+
+
+@app.route("/api/categorias", methods=["GET", "POST"])
+def categorias():
     conn = get_db()
-    conteudo = conn.execute("SELECT * FROM conteudos WHERE id = ?", (conteudo_id,)).fetchone()
-    
-    if not conteudo:
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            if request.method == "POST":
+                data = request.get_json(silent=True) or {}
+                nome = (data.get("nome") or "").strip()
+                if not nome:
+                    return jsonify({"erro": "Nome da categoria é obrigatório."}), 400
+
+                cur.execute(
+                    "INSERT INTO categorias (nome) VALUES (%s) RETURNING *;",
+                    (nome,),
+                )
+                nova = cur.fetchone()
+                conn.commit()
+                return jsonify(nova), 201
+
+            cur.execute("SELECT * FROM categorias ORDER BY id DESC;")
+            rows = cur.fetchall()
+            return jsonify(rows)
+    finally:
         conn.close()
-        return jsonify({"status": "erro", "mensagem": "Conteúdo não encontrado"}), 404
-    
-    if session.get('role') != 'admin':
+
+
+@app.route("/api/conteudos", methods=["GET", "POST"])
+def conteudos():
+    conn = get_db()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            if request.method == "POST":
+                # Aceita tanto multipart/form-data (com ficheiro) quanto JSON
+                if request.content_type and "multipart/form-data" in request.content_type:
+                    form = request.form
+                    titulo = (form.get("titulo") or "").strip()
+                    descricao = (form.get("descricao") or "").strip()
+                    link = (form.get("link") or "").strip()
+                    categoria_id = form.get("categoria_id")
+                    arquivo = request.files.get("arquivo") or request.files.get("file")
+                else:
+                    data = request.get_json(silent=True) or {}
+                    titulo = (data.get("titulo") or "").strip()
+                    descricao = (data.get("descricao") or "").strip()
+                    link = (data.get("link") or "").strip()
+                    categoria_id = data.get("categoria_id")
+                    arquivo = None
+
+                if not titulo:
+                    return jsonify({"erro": "Título é obrigatório."}), 400
+
+                cat_id_int = int(categoria_id) if str(categoria_id or "").isdigit() else None
+                arquivo_url = ""
+                arquivo_nome = ""
+
+                if arquivo and arquivo.filename:
+                    arquivo_url, arquivo_nome = upload_arquivo_supabase(arquivo)
+
+                cur.execute(
+                    """
+                    INSERT INTO conteudos (titulo, descricao, link, categoria_id, arquivo_path, arquivo_nome)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING *;
+                    """,
+                    (titulo, descricao, link, cat_id_int, arquivo_url, arquivo_nome),
+                )
+                criado = cur.fetchone()
+                conn.commit()
+                return jsonify(criado), 201
+
+            cur.execute("""
+                SELECT c.*, cat.nome AS categoria_nome
+                FROM conteudos c
+                LEFT JOIN categorias cat ON c.categoria_id = cat.id
+                ORDER BY c.id DESC;
+            """)
+            rows = cur.fetchall()
+            return jsonify(rows)
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"erro": str(e)}), 500
+    finally:
         conn.close()
-        return jsonify({"status": "erro", "mensagem": "Apenas administradores podem apagar conteúdos."}), 403
 
-    if conteudo['arquivo_path']:
-        file_path = os.path.join(app.root_path, conteudo['arquivo_path'].lstrip('/'))
-        if os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except:
-                pass
 
-    conn.execute("DELETE FROM conteudos WHERE id = ?", (conteudo_id,))
-    conn.commit()
-    conn.close()
-    return jsonify({"status": "sucesso", "mensagem": "Conteúdo apagado com sucesso!"})
+@app.route("/api/conteudos/<int:conteudo_id>", methods=["DELETE"])
+def deletar_conteudo(conteudo_id):
+    conn = get_db()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("DELETE FROM conteudos WHERE id = %s RETURNING id;", (conteudo_id,))
+            removido = cur.fetchone()
+            conn.commit()
+            if not removido:
+                return jsonify({"erro": "Conteúdo não encontrado."}), 404
+            return jsonify({"removido": True, "id": removido["id"]})
+    finally:
+        conn.close()
 
-# Garante que as tabelas existem mesmo quando o Render inicia via Gunicorn
-init_db()
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
